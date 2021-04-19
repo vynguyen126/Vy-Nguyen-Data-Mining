@@ -1,0 +1,127 @@
+---
+title: "Assigment - kNN DIY"
+author:
+- Vy Nguyen - Author
+- Koko Nguyuen - Reviewer
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output:
+  html_document:
+    toc: yes
+    toc_depth: '2'
+    df_print: paged
+  html_notebook:
+    toc: yes
+    toc_depth: 2
+---
+
+
+```{r}
+library(tidyverse)
+library(googlesheets4)
+library(class)
+library(caret)
+```
+
+---
+## Business Understanding
+
+
+## Data Understanding
+Three data sets are submitted, for training and testing. Ground-truth occupancy was obtained from time stamped pictures that were taken every minute.
+
+```{r}
+url <- "https://raw.githubusercontent.com/HAN-M3DM-Data-Mining/assignments/master/datasets/KNN-occupancy.csv"
+rawDS <- read_csv(url)
+str(rawDS)
+```
+The dataset has 7 variables (columns) and 8143 observations (rows)
+
+## Data Preparation
+The first variable, "date", contains unique time.The date do not contain any relevant information for making predictions, so will delete it from the data set
+
+```{r}
+cleanDS <- rawDS[-1]
+head(cleanDS)
+```
+The variable named occupancy contains the outcomes we would like to predict - '0' for 'not occupied', '1' for 'occupied status.'
+
+The variable we would like to predict is called the 'occupancy'. We can look at the counts and proportions for both outcomes, using the table() and prop.tables() functions. 
+
+```{r}
+cntDiag <- table(cleanDS$Occupancy)
+propDiag <- round(prop.table(cntDiag) * 100 , digits = 1)
+cntDiag
+```
+
+```{r}
+propDiag
+```
+
+The variable is now coded as a type character. Many models require that the label is of type factor. This is easily solved using factor() function.
+```{r}
+cleanDS$Occupancy <- factor(cleanDS$Occupancy, levels = c("1", "0"), labels = c("occupied status", "not occupied")) %>% relevel("not occupied")
+head(cleanDS, 10)
+```
+```{r}
+summary(cleanDS[c("Temperature", "Humidity", "Light", "CO2")])
+```
+
+```{r}
+normalize <- function(x) { # Function takes in a vector
+  return ((x - min(x)) / (max(x) - min(x))) # distance of item value - minimum vector value divided by the range of all vector values
+}
+
+testSet1 <- c(1:4)
+testSet2 <- c(1:4) * 10
+
+cat("testSet1:", testSet1, "\n")
+```
+
+```{r}
+cat("testSet2:", testSet2, "\n")
+```
+
+```{r}
+cat("Normalized testSet1:", normalize(testSet1), "\n")
+```
+
+```{r}
+cat("Normalized testSet2:", normalize(testSet2))
+```
+
+```{r}
+cleanDS_n <- sapply(1:5,
+                    function(x) {
+  normalize(cleanDS[,x])
+}) %>% as.data.frame()
+
+summary(cleanDS_n[c("Temperature", "Humidity", "Light", "CO2")])
+```
+
+```{r}
+trainDS_feat <- cleanDS_n[1:469,  ]
+testDS_feat <- cleanDS_n[470:8143,  ]
+```
+
+```{r}
+trainDS_labels <- cleanDS[1:469,  1]
+testDS_labels <- cleanDS[470:8143,  1]
+```
+
+## Modeling
+```{r}
+cleanDS_test_pred <- knn(train = as.matrix(trainDS_feat), test = as.matrix(testDS_feat), cl = as.matrix(trainDS_labels), k = 21)
+head(cleanDS_test_pred)
+```
+
+```{r}
+
+```
+
+## Evaluation and Deployment
+text and code here
+
+## Reviewer adds suggestions for improving the model
+- While splitting data to test set and train set, you chose the wrong range. SHould be extended to 8143
+-While doing the test and train set you chose the wrong number of variables
+- Try splitting data in testing & training set step to a different size (ex:50/50) for a better accuracy
