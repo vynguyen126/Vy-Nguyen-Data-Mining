@@ -1,0 +1,127 @@
+---
+title: "Assigment - kNN DIY"
+author:
+- Vy Nguyen - Author
+- Koko Nguyen - Reviewer
+date: "`r format(Sys.time(), '%d %B, %Y')`"
+output:
+  html_document:
+    toc: yes
+    toc_depth: '2'
+    df_print: paged
+  html_notebook:
+    toc: yes
+    toc_depth: 2
+---
+
+##Several packages have been installed to run the mining process.
+
+```{r}
+library(tidyverse)
+library(googlesheets4)
+library(class)
+library(caret)
+```
+
+---
+## Business Understanding
+The context of data relates to the estimation of occupancy in 6 days with different time frames based on five particular factors: temperature, humidity, light, CO2, and humidity ratio. The measurement started from 4th February 2015 till 10th February 2015. 
+
+## Data Understanding
+Three data sets are submitted, for training and testing. Ground-truth occupancy was obtained from time stamped pictures that were taken every minute.
+
+
+```{r}
+url <- "https://raw.githubusercontent.com/HAN-M3DM-Data-Mining/assignments/master/datasets/KNN-occupancy.csv"
+rawDS <- read_csv(url)
+str(rawDS)
+```
+
+The dataset has 7 variables (columns) and 8143 observations (rows)
+
+## Data Preparation
+The first variable, "date", contains unique time.The date do not contain any relevant information for making predictions, so will delete it from the data set
+
+```{r}
+cleanDS <- rawDS[-1]
+head(cleanDS)
+```
+The variable named occupancy contains the outcomes we would like to predict - '0' for 'not occupied', '1' for 'occupied status.'
+
+The variable we would like to predict is called the 'label'. We can look at the counts and proportions for both outcomes, using the table() and prop.tables() functions. 
+
+```{r}
+cntDiag <- table(cleanDS$Occupancy)
+propDiag <- round(prop.table(cntDiag) * 100 , digits = 1)
+cntDiag
+```
+
+```{r}
+propDiag
+```
+
+The variable is now coded as a type character. Many models require that the lable is of type factor. This is easily solved using factor() function.
+```{r}
+cleanDS$Occupancy <- factor(cleanDS$Occupancy, levels = c("1", "0"), labels = c("occupied status", "not occupied")) %>% relevel("not occupied")
+head(cleanDS, 10)
+```
+```{r}
+summary(cleanDS[c("Temperature", "Humidity", "Light", "CO2")])
+```
+
+```{r}
+normalize <- function(x) { # Function takes in a vector
+  return ((x - min(x)) / (max(x) - min(x))) # distance of item value - minimum vector value divided by the range of all vector values
+}
+
+testSet1 <- c(1:4)
+testSet2 <- c(1:4) * 10
+
+cat("testSet1:", testSet1, "\n")
+```
+
+```{r}
+cat("testSet2:", testSet2, "\n")
+```
+
+```{r}
+cat("Normalized testSet1:", normalize(testSet1), "\n")
+```
+
+```{r}
+cat("Normalized testSet2:", normalize(testSet2))
+```
+
+```{r}
+cleanDS_n <- sapply(1:5,
+                    function(x) {
+  normalize(cleanDS[,x])
+}) %>% as.data.frame()
+
+summary(cleanDS_n[c("Temperature", "Humidity", "Light", "CO2")])
+```
+
+The arrange of testing is divided by 50:50 concept which means 8143 divded by 2 and set as two groups. 
+
+```{r}
+trainDS_feat <- cleanDS_n[1:4071,  ]
+testDS_feat <- cleanDS_n[4072:8143,  ]
+```
+
+```{r}
+trainDS_labels <- cleanDS[1:4071,  6]
+testDS_labels <- cleanDS[4072:8143,  6]
+```
+
+## Modeling
+```{r}
+cleanDS_test_pred <- knn(train = as.matrix(trainDS_feat), test = as.matrix(testDS_feat), cl = as.matrix(trainDS_labels), k = 21)
+head(cleanDS_test_pred)
+```
+
+```{r}
+confusionMatrix(cleanDS_test_pred, testDS_labels[[1]], positive = NULL, dnn = c("Prediction", "True"))
+```
+
+## Evaluation and Deployment
+The accuracy rate increased by 96% which means the test is significant enough to evaluate. 
